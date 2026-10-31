@@ -1,6 +1,6 @@
 # YolBaku — Smart Transit & Crowdsourcing Engine
 
-Azərbaycan dilində işlək sərnişin və operator demo tətbiqi. React + Leaflet UI, FastAPI REST API, PostgreSQL 16, Docker Compose.
+Azərbaycan dilində işlək sərnişin və operator demo tətbiqi. React + Leaflet UI, Java 21 / Spring Boot REST API, PostgreSQL 16, Docker Compose.
 
 ## Başlat
 
@@ -16,7 +16,7 @@ Operator mərkəzində `.env` faylındakı `OPERATOR_KEY` daxil edilir. Açar br
 
 Cloud proxy ilə build:
 ```bash
-docker build --secret id=proxy_ca,src="$CODEX_PROXY_CERT" --secret id=system_ca,src=/etc/ssl/certs/ca-certificates.crt -t smart-transit-and-crowdsourcing-engine-app .
+docker build --secret id=proxy_ca,src="$CODEX_PROXY_CERT" -t smart-transit-and-crowdsourcing-engine-app .
 docker compose up -d --no-build
 ```
 
@@ -36,7 +36,7 @@ docker compose up -d --no-build
 ./scripts/test.sh
 cd frontend && npm ci && npm run build
 ```
-Unit və REST inteqrasiya testləri ayrıca `transit_test` PostgreSQL bazasında işləyir. STOP, giriş nəzarəti, hadisənin ETA-ya təsiri, telemetriya, limitlər və qərarın saxlanılması yoxlanılır.
+JUnit unit və REST inteqrasiya testləri ayrıca `transit_test` PostgreSQL bazasında işləyir. STOP, giriş nəzarəti, hadisənin ETA-ya təsiri, telemetriya, limitlər və qərarın saxlanılması yoxlanılır.
 
 ## Demo təqdimat axını
 
@@ -59,3 +59,19 @@ Qərar mühərriki öyrədilmiş ML və ya optimal dispetçer sistemi deyil. Kam
 QA nəticələri: [docs/QA.md](docs/QA.md).
 
 Arxitektura və AI istifadəsi: [docs/TECHNICAL.md](docs/TECHNICAL.md).
+
+## Java development
+
+Backend `backend/src/main/java/az/yolbaku` altındadır. Lokal inkişaf üçün **JDK 21** və Maven 3.9+ lazımdır; Docker bunları özü təmin edir.
+
+```bash
+cd backend
+mvn test # unit tests; PostgreSQL integration tests require a dedicated DB
+mvn spring-boot:run
+```
+
+Backend environment: `DATABASE_URL=jdbc:postgresql://localhost:5432/transit`, `DATABASE_USER=transit`, `POSTGRES_PASSWORD`, `OPERATOR_KEY`. Docker Compose daxilində bunlar avtomatik verilir. PostgreSQL Compose daxilində host portuna açılmır; lokal Java development üçün ayrıca lokal DB və ya yerli port override istifadə edin. Integration suite yalnız `DATABASE_URL` sonu `transit_test` olduqda işləyir. `scripts/test.sh` bu konfiqurasiyanı avtomatik qurur.
+
+Frontend React/JavaScript olaraq qalır. `vision/` əsas tətbiqdən ayrı optional Python/Ultralytics alətidir; Java server onu çağırmır. Əsas tətbiqin işə düşməsi üçün Python lazım deyil.
+
+Əvvəlki versiyadan yeniləmə: `git pull origin main` və `docker compose up -d --build`. Mövcud `.env` və PostgreSQL volume saxlanılır; `down -v` işlətməyin.

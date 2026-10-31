@@ -1,0 +1,13 @@
+services:
+  test:
+    build:
+      context: .
+      target: java-build
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/transit_test
+      DATABASE_USER: transit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: ["mvn", "-o", "test"]
+    depends_on:
+      db:
+        condition: service_healthy
