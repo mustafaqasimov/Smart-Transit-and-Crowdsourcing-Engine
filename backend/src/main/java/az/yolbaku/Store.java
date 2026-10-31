@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.Instant;
 import java.util.*;
 
 @Repository
@@ -23,6 +24,11 @@ public class Store {
         jdbc.execute("CREATE INDEX IF NOT EXISTS ix_records_kind ON records(kind)");
     }
     public void health() { jdbc.queryForObject("SELECT 1",Integer.class); }
+    public Map<String,Object> lock(int id,String kind) {
+        var rows=jdbc.query("SELECT id,data FROM records WHERE id=? AND kind=? FOR UPDATE",(rs,n)->decode(rs.getString("data"),rs.getInt("id")),id,kind);
+        if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Tapılmadı");
+        return rows.get(0);
+    }
     private Map<String,Object> decode(String json, int id) {
         try { Map<String,Object> r=mapper.readValue(json,new TypeReference<>(){}); r.put("id",id); return r; }
         catch(Exception e) { throw new IllegalStateException("Invalid stored record",e); }
@@ -35,8 +41,14 @@ public class Store {
         return jdbc.query("SELECT id,data FROM records WHERE kind=? ORDER BY id",(rs,n)->decode(rs.getString("data"),rs.getInt("id")),kind);
     }
     public Map<String,Object> get(int id,String kind) {
-        return list(kind).stream().filter(r->((Number)r.get("id")).intValue()==id).findFirst()
-            .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Tapılmadı"));
+        var rows=jdbc.query("SELECT id,data FROM records WHERE id=? AND kind=?",(rs,n)->decode(rs.getString("data"),rs.getInt("id")),id,kind);
+        if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Tapılmadı");
+        return rows.get(0);
+    }
+    public void delete(int id,String kind) { jdbc.update("DELETE FROM records WHERE id=? AND kind=?",id,kind); }
+    /** Deletes records whose ISO-8601 timestamp field is older than the cutoff. */
+    public int purge(String kind,String field,Instant cutoff) {
+        return jdbc.update("DELETE FROM records WHERE kind=? AND data->>? IS NOT NULL AND (data->>?)::timestamptz < ?",kind,field,field,java.sql.Timestamp.from(cutoff));
     }
     public Map<String,Object> add(String kind,Map<String,Object> data) {
         Integer id=jdbc.queryForObject("INSERT INTO records(kind,data) VALUES (?,CAST(? AS JSON)) RETURNING id",Integer.class,kind,encode(data));

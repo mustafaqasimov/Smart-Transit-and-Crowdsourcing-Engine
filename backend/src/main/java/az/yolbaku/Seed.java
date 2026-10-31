@@ -8,6 +8,7 @@ import java.time.Instant;
 import static az.yolbaku.Store.map;
 
 @Component
+@org.springframework.core.annotation.Order(0)
 public class Seed implements ApplicationRunner {
     private final Store store;
     public Seed(Store store) { this.store=store; }

@@ -1,0 +1,34 @@
+# Browser tests run against their own app instance and transit_e2e database, never the demo data.
+services:
+  app-qa:
+    build: .
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/transit_e2e
+      DATABASE_USER: transit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      OPERATOR_KEY: ${OPERATOR_KEY:?Set OPERATOR_KEY in .env}
+      DEMO_ACCESS_ENABLED: "true"
+      VISION_URL: http://vision:8001
+    depends_on:
+      db:
+        condition: service_healthy
+      vision:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-Y", "off", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  ui-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    environment:
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
+    network_mode: service:app-qa
+    volumes:
+      - ./artifacts/ui:/work/test-results
+      - ./frontend/e2e:/work/e2e:ro
+    depends_on:
+      app-qa:
+        condition: service_healthy

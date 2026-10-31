@@ -1,77 +1,72 @@
-# YolBaku — Smart Transit & Crowdsourcing Engine
+# YolBaku — gediş planı və nəqliyyatın rəqəmsal əkizi
 
-Azərbaycan dilində işlək sərnişin və operator demo tətbiqi. React + Leaflet UI, Java 21 / Spring Boot REST API, PostgreSQL 16, Docker Compose.
+Digital Azerbaijan Challenge 2026 üçün Azərbaycan dilində işlək demo. React mobil UI, Java 21 / Spring Boot, PostgreSQL, Python YOLO11n CPU xidməti.
 
 ## Başlat
 
-```bash
-cp .env.example .env
-# .env-də POSTGRES_PASSWORD və OPERATOR_KEY üçün təsadüfi dəyərlər yazın.
-# PostgreSQL parolunda URL-safe simvollar istifadə edin.
+Docker Desktop işləməlidir. İlk dəfə `.env.example` faylını `.env` adı ilə kopyalayın və `POSTGRES_PASSWORD`, `OPERATOR_KEY` üçün təsadüfi dəyərlər yazın. Mövcud `.env` faylını dəyişməyin.
+
+```powershell
 docker compose up -d --build
 ```
 
-UI: port **8000**. REST sənədləri: **/docs**. Sağlamlıq: **/api/health**.
-Operator mərkəzində `.env` faylındakı `OPERATOR_KEY` daxil edilir. Açar brauzer yaddaşında saxlanılmır. Mövcud cloud instansiyasında `.env` artıq yaradılıb; onu əvəz etməyin.
+- Tətbiq: http://localhost:8000
+- API sənədləri: http://localhost:8000/docs
+- Sağlamlıq: http://localhost:8000/api/health
+- YOLO sağlamlığı: http://localhost:8000/api/vision/health
 
-Cloud proxy ilə build:
-```bash
-docker build --secret id=proxy_ca,src="$CODEX_PROXY_CERT" -t smart-transit-and-crowdsourcing-engine-app .
-docker compose up -d --no-build
+İlk build internetdən Java/Node/Python paketlərini, CPU PyTorch, YOLO çəkilərini və test şəklini endirir; disk və şəbəkədən asılı olaraq bir neçə dəqiqə çəkə bilər. Sonrakı build-lər keşdən istifadə edir. Windows üçün `.gitattributes` shell skriptlərinin LF sətir sonluqlarını qoruyur.
+
+## Giriş və demo
+
+İlk ekran iki seçim verir: **Sərnişin** və **Operator**. Qeydiyyat və parol yoxdur. Compose `DEMO_ACCESS_ENABLED=true` qurur. Rol serverin yaratdığı 4 saatlıq HttpOnly/SameSite cookie ilə saxlanır; səhifəni yeniləmək rolu saxlayır, tətbiq serverinin restartı sessiyanı bitirir.
+
+Bu rol seçimi şəxsiyyət yoxlaması deyil. İctimai istehsal mühitində demo girişini söndürün və ayrıca həqiqi autentifikasiya tətbiq edin. Bütün operator API-ləri (twin və YOLO daxil) cookie olmadan `X-Operator-Key` başlığı ilə `.env`-dəki `OPERATOR_KEY`-i də qəbul edir; demo girişi söndürüləndə inteqrasiyalar bu yolla işləyir. Bu açar frontend-ə ötürülmür. Demo girişi aktiv olanda sərnişin əməliyyatları (reysə qoşulma, bildiriş) rol seçimi tələb edir; girişə IP üzrə dəqiqədə 30 cəhd limiti qoyulub.
+
+### Sərnişin
+
+1. **Gediş planla**: dayanacaqları siyahıdan seçin və ya xəritədə dayanacağa toxunub **Buradan / Buraya** basın. Hər iki istiqamət və bir köçürməli gedişlər təklif olunur (ümumi vaxt, ilk avtobus, köçürmə gözləməsi).
+2. 10 demo xətt, 35 dayanacaq, ilk qurulumda 45 avtobus. Xəritədə avtobuslar 🚌 markerlə, doluluq rəngi ilə göstərilir və 4 saniyədə bir hamar hərəkət edir.
+3. Gəlişlər seçilmiş dayanacaq və istiqamət üzrə ETA ilə sıralanır.
+4. **Boş / Normal / Dolu / Çox dolu** bildirişi 10 dəqiqə ərzində avtobusun göstərilən doluluğunu dərhal dəyişir. Hər istifadəçinin hər avtobus üçün bir aktiv bildirişi var; yeni seçim əvvəlkini əvəz edir.
+5. Reysə qoşulun və STOP göndərin; reys səhifə yenilənəndə də qalır.
+6. Sol menyu (mobildə alt menyu) səhifəni sürüşdürdükcə aktiv bölməni göstərir.
+
+### Operator / digital twin
+
+1. Xətti, dayanacağı və istiqaməti seçin; tələb əmsalı, əlavə gecikmə və 5–60 dəqiqəlik pəncərə qurun.
+2. **Simulyasiyanı hesabla** cari vəziyyətin surətini saxlayır; parkı dəyişmir.
+3. Rezerv avtobus (60 dəqiqə xəttdə qalır), siqnal prioriteti (15 dəqiqəlik, təkrar tətbiq yalnız müddəti uzadır) və yük bölgüsünü müqayisə edin.
+4. **Demo parkına tətbiq et** seçilmiş həlli parka və qərar jurnalına yazır. 5 dəqiqədən köhnə və ya dəyişmiş parka aid ssenari rədd edilir.
+5. Avtobus parkı cədvəli bütün avtobusları, ETA, doluluq və sərnişin bildirişlərini göstərir.
+6. YOLO: **Şəkil** (maks. 8 MB) və ya **Video** (MP4/WebM/MOV, maks. 50 MB, ilk 30 saniyə). Video saniyədə ~3 kadr analiz edilir, ByteTrack eyni insanı kadrlar arasında izləyir; çərçivələr video oynadıqca üzərində göstərilir.
+7. Sərnişinin STOP sorğusunu təsdiqləyin, demo yol hadisəsi yaradın və bağlayın.
+
+### Tətbiq kimi quraşdırma (PWA)
+
+YolBaku quraşdırıla bilən veb tətbiqdir. Chrome/Edge-də ünvan sətrindəki quraşdır ikonu və ya menyudakı **Tətbiqi quraşdır** düyməsi, Android-də **Ana ekrana əlavə et**, iOS Safari-də **Paylaş → Ana ekrana əlavə et**. Brauzerlər quraşdırmanı yalnız `localhost` və ya HTTPS üzərindən icazə verir; telefondan LAN IP ilə açıldıqda tətbiq işləyir, amma quraşdırma üçün HTTPS lazımdır.
+
+## Məlumatın mənası
+
+Bakı məkan adları və təxmini koordinatlar istifadə edilir. Marşrut nömrələri, dayanacaq ardıcıllığı, GPS hərəkəti, ETA, doluluq və sərnişin tələbi **demo/sintetikdir**; AYNA və ya 2GIS ilə inteqrasiya yoxdur. 2GIS-in ictimai nəqliyyat API-si kommersiya açarı tələb edir və məlumatın açarsız toplanması istifadə şərtlərinə ziddir; açar əldə edilərsə `FleetService`/`RouteCatalog` bir adapterlə əvəz oluna bilər. Xəritə xətləri dayanacaqlar arası düz xətlərdir.
+
+YOLO real inferens edir, amma standart nümunələr avtobusun xaricində çəkilmiş Ultralytics şəklidir (video nümunə həmin şəkil üzərində süni kamera hərəkətidir). Görünən insan sayı salonun ümumi doluluğu deyil. 2D salonda mövqelər sintetikdir. Yüklənən şəkil və videolar saxlanmır; yalnız aşkarlama metadatası PostgreSQL-ə yazılır. Köhnə müvəqqəti qeydlər (rezerv avtobuslar, ssenarilər, bildirişlər) avtomatik təmizlənir.
+
+## Test
+
+```powershell
+.\scripts\verify.ps1
 ```
 
-## İşləyən imkanlar
+Backend testləri ayrıca `transit_test` bazasında tranzaksiyaların rollback-i ilə işləyir. Playwright testləri ayrıca `app-qa` konteynerində, hər dəfə yenidən yaradılan `transit_e2e` bazasına qarşı işləyir; demo bazası dəyişmir. Ekran görüntüləri `artifacts/ui/` qovluğundadır.
 
-- 3 nümunə marşrut, sxematik xəritə, ETA, oturacaq və ayaqüstə doluluğu.
-- Sıxlıq bildirişi: 60 saniyə limit, 10 dəqiqəlik aktual pəncərə, çəkili birləşdirmə.
-- Demo reysə qoşulma, idempotent STOP sorğusu, operator/sürücü paneli təsdiqi.
-- Hadisə yaratma/bağlama, sərnişin xəbərdarlığı, ETA və tələb hesablamasına təsir.
-- Telemetriya yeniləmə, əvvəlki avtobusun keçid vaxtı və sonrakı avtobusun tutumu əsasında qərar dəstəyi.
-- Qərar jurnalı və sadə rezerv tutum ssenarisi; bütün yazılar PostgreSQL-də saxlanılır.
-- Operator yazma əməliyyatları açarla qorunur. API girişləri Pydantic ilə yoxlanılır.
+Linux backend testləri: `./scripts/test.sh`. Yalnız brauzer testləri:
 
-## QA
-
-```bash
-./scripts/test.sh
-cd frontend && npm ci && npm run build
-```
-JUnit unit və REST inteqrasiya testləri ayrıca `transit_test` PostgreSQL bazasında işləyir. STOP, giriş nəzarəti, hadisənin ETA-ya təsiri, telemetriya, limitlər və qərarın saxlanılması yoxlanılır.
-
-## Demo təqdimat axını
-
-1. 125 marşrutunun ETA və oturacaq/ayaqüstə doluluğuna baxın.
-2. “Dolu” bildirişi göndərin; ümumi göstərici və bildiriş sayı dəyişir.
-3. Reysə qoşulun, STOP göndərin; server təsdiqini görün.
-4. Operator mərkəzinə keçin, açarı daxil edin və STOP-u təsdiqləyin.
-5. Qəza yaradın: gecikmə 7 dəqiqə, əlavə tələb 20. Sərnişin bildirişi və ETA yenilənsin.
-6. Tövsiyənin səbəbini oxuyun, rezerv tələbini jurnala yazın.
-7. Hadisəni bağlayın; ETA-nın əvvəlki səviyyəyə qayıtmasını göstərin.
-
-## Dürüst məhdudiyyətlər
-
-Bu prototip **demo məlumatı** istifadə edir; Bakı operatorlarının GPS/GTFS, yol hadisələri və fiziki STOP sisteminə qoşulmayıb. Xəritədə xətt real marşrut deyil. Avtobus mövqeləri telemetriya göndərilənədək dəyişmir. Sorğu ilə özünü avtobusda elan etmək fiziki yoxlama deyil. Rate limit cihaz ID-si ilədir, istehsal anti-spam sistemi deyil. STOP bir demo sessiya üçün bir sorğudur; dayanacaq dövrü/QR verifikasiyası gələcək işdir.
-
-Qərar mühərriki öyrədilmiş ML və ya optimal dispetçer sistemi deyil. Kamera demo UI-nı idarə etmir. `vision/count.py` ayrıca, **əsas QA-da yoxlanılmamış** YOLO/ByteTrack adapteridir; real video və model çəkiləri tələb edir. Görünən adam sayı ümumi sərnişin və ya oturacaq doluluğu sayılmır. Kamera kalibrasiyası və etalon video olmadan dəqiqlik iddiası yoxdur.
-
-İstehsal üçün istifadəçi/rol autentifikasiyası, audit, migrasiyalar, real reys/dayanacaq modeli, telemetriya tarixçəsi, etibarlılıq kalibrasiyası və resurs məhdudiyyətli optimallaşdırma əlavə edilməlidir. İnternet olmadıqda xəritə plitələri və xarici şrift yüklənməyə bilər; əsas UI/API işləyir.
-
-QA nəticələri: [docs/QA.md](docs/QA.md).
-
-Arxitektura və AI istifadəsi: [docs/TECHNICAL.md](docs/TECHNICAL.md).
-
-## Java development
-
-Backend `backend/src/main/java/az/yolbaku` altındadır. Lokal inkişaf üçün **JDK 21** və Maven 3.9+ lazımdır; Docker bunları özü təmin edir.
-
-```bash
-cd backend
-mvn test # unit tests; PostgreSQL integration tests require a dedicated DB
-mvn spring-boot:run
+```powershell
+docker compose exec -T db createdb -U transit transit_e2e   # bir dəfə
+docker compose -f compose.yaml -f compose.qa.yaml run --rm --build ui-test
 ```
 
-Backend environment: `DATABASE_URL=jdbc:postgresql://localhost:5432/transit`, `DATABASE_USER=transit`, `POSTGRES_PASSWORD`, `OPERATOR_KEY`. Docker Compose daxilində bunlar avtomatik verilir. PostgreSQL Compose daxilində host portuna açılmır; lokal Java development üçün ayrıca lokal DB və ya yerli port override istifadə edin. Integration suite yalnız `DATABASE_URL` sonu `transit_test` olduqda işləyir. `scripts/test.sh` bu konfiqurasiyanı avtomatik qurur.
+Məlumat `transit_data` volume-da saxlanır. Bazanı qorumaq üçün `docker compose down` istifadə edin; `down -v` bazanı silir.
 
-Frontend React/JavaScript olaraq qalır. `vision/` əsas tətbiqdən ayrı optional Python/Ultralytics alətidir; Java server onu çağırmır. Əsas tətbiqin işə düşməsi üçün Python lazım deyil.
-
-Əvvəlki versiyadan yeniləmə: `git pull origin main` və `docker compose up -d --build`. Mövcud `.env` və PostgreSQL volume saxlanılır; `down -v` işlətməyin.
+Arxitektura və model: [docs/TECHNICAL.md](docs/TECHNICAL.md). Test nəticələri: [docs/QA.md](docs/QA.md). AI bəyannaməsi və təqdimat qeydi: [docs/SUBMISSION.txt](docs/SUBMISSION.txt).

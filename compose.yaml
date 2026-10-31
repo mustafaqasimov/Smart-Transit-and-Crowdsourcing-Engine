@@ -1,4 +1,11 @@
 services:
+  vision:
+    build: ./vision
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
   db:
     image: postgres:16-alpine
     environment:
@@ -19,6 +26,8 @@ services:
       DATABASE_USER: transit
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       OPERATOR_KEY: ${OPERATOR_KEY:?Set OPERATOR_KEY in .env}
+      DEMO_ACCESS_ENABLED: ${DEMO_ACCESS_ENABLED:-true}
+      VISION_URL: http://vision:8001
     ports:
       - "8000:8000"
     depends_on:

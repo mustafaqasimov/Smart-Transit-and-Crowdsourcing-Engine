@@ -1,0 +1,37 @@
+Digital Azerbaijan Challenge 2026 — yarımfinal
+Layihə: YolBaku — Smart Transit & Crowdsourcing Engine
+
+PROBLEM VƏ HƏLL
+Sərnişin avtobusun nə vaxt gələcəyini və nə qədər dolu olduğunu bir ekranda görür.
+Operator qərarı tətbiq etməzdən əvvəl onun dayanacaq növbəsinə təsirini sınaqdan keçirir.
+
+TƏQDİMAT AXINI
+1. localhost:8000 açın, qeydiyyatsız Sərnişin rolunu seçin.
+2. 28 May → Ağ Şəhər gedişini tapın, xəritədə xəttin bütün avtobuslarını göstərin.
+3. Avtobus seçin, ETA və doluluğu müqayisə edin, reysə qoşulub STOP göndərin.
+4. Ayrı brauzer profilində Operator seçin; STOP-u təsdiqləyin.
+5. Tələb əmsalı və gecikməni dəyişin, simulyasiya hesablayın.
+6. Üç variantı, əvvəl/sonra qrafikini, qarşılanan tələbi müqayisə edin.
+7. Rezerv avtobusu demo parkına tətbiq edin; yeni avtobusu xəritədə və jurnalda göstərin.
+8. 2D salonu açın, YOLO nümunəsini işə salın və həqiqi detection çərçivələrini göstərin.
+
+AI İSTİFADƏSİ BƏYANNAMƏSİ
+Codex generativ AI köməkçisi arxitektura, Java/React/Python implementasiyası,
+test ssenariləri, UI dizaynı, nasazlıq aradan qaldırılması və sənədləşmədə istifadə olunub.
+Tətbiqin iş vaxtındakı YOLO11n komponenti əvvəlcədən öyrədilmiş insan aşkarlama modelidir.
+Digital twin qərarları ayrıca qayda/növbə modelidir; öyrədilmiş ML proqnozu deyil.
+Nəticələr avtomatik backend və brauzer testləri ilə yoxlanılıb; konkret nəticələr docs/QA.md-dədir.
+
+MƏHDUDİYYƏTLƏR
+Avtobus GPS-i, doluluq, marşrut ardıcıllığı və tələbi sintetikdir.
+2D salon real kamera rekonstruksiyası deyil. YOLO nümunəsində insan sayımı həqiqidir,
+amma nümunə şəkil avtobus xaricindəndir və real salon doluluğu sayılmır.
+Rol seçimi yalnız demo girişidir; istehsal autentifikasiyası deyil.
+
+İŞƏ SALMA VƏ TEXNİKİ İZAH
+README.md — quraşdırma, demo, test komandaları.
+docs/TECHNICAL.md — komponentlər, endpointlər, model, mənbələr, məhdudiyyətlər.
+docs/QA.md — test nəticələri.
+
+Komanda təqdimatdan əvvəl məzmunu, müəlliflik məlumatlarını və yarış qaydalarına uyğunluğu
+özü yoxlamalıdır. Bu sənəd və layihə avtomatik olaraq e-poçtla göndərilməyib.

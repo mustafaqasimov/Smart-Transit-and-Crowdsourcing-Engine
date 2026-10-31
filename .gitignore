@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 test-results/
 target/
+*-build.log
+*-test.log
+playwright-report/
+artifacts/

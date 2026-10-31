@@ -1,2 +1,7 @@
-ultralytics>=8.3,<9
+ultralytics==8.4.194
+opencv-python==5.0.0.93
+lap==0.5.12
 httpx==0.28.1
+fastapi==0.115.8
+uvicorn==0.34.0
+python-multipart==0.0.22
