@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,7 +14,7 @@ import java.security.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 /** Explicit opt-in demo role selection. Not production identity verification. */
 @RestController

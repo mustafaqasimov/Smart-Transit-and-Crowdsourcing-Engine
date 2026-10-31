@@ -1,0 +1,6 @@
+# Local runtime without Docker for app/frontend/vision: only PostgreSQL in Docker, reachable on localhost.
+# docker compose -f compose.yaml -f compose.local.yaml up -d db
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

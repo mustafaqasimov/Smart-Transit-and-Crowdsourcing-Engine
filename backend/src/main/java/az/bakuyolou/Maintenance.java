@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.time.*;
 import org.slf4j.*;
@@ -15,7 +15,7 @@ public class Maintenance {
     public void purge() {
         var now=Instant.now();var day=now.minus(Duration.ofDays(1));
         int removed=store.purge("bus","expires_at",now)+store.purge("scenario","created_at",day)+store.purge("report","created_at",day)
-            +store.purge("session","created_at",day)+store.purge("stop","created_at",day)+store.purge("vision","created_at",now.minus(Duration.ofDays(7)));
+            +store.purge("session","created_at",day)+store.purge("stop","created_at",day)+store.purge("vision","created_at",now.minus(Duration.ofDays(7)))+store.purge("alert","created_at",day);
         if(removed>0) log.info("Removed {} expired demo records",removed);
     }
 }

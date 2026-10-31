@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.time.Instant;
 import java.util.*;
@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
-import static az.yolbaku.Store.map;
-import static az.yolbaku.DecisionEngine.n;
+import static az.bakuyolou.Store.map;
+import static az.bakuyolou.DecisionEngine.n;
 
 @Service
 public class TwinService {
@@ -42,6 +42,22 @@ public class TwinService {
             "snapshot",buses.stream().map(b->map("id",b.get("id"),"vehicle",b.get("vehicle"),"eta",b.get("eta"),"free",b.get("free"))).toList(),
             "fingerprint",fleet.fingerprint(p.route())));
     }
+    private void addReserve(RouteCatalog.Route r,String stop,String dir,String vehicle) {
+        if(fleet.buses(r.id(),stop,dir).size()>=r.buses()+RESERVE_EXTRA) throw new ResponseStatusException(HttpStatus.CONFLICT,"Demo rezerv limiti: hər xəttdə "+RESERVE_EXTRA+" əlavə avtobus");
+        var now=Instant.now();
+        store.add("bus",map("route",r.id(),"name",r.name(),"vehicle",vehicle,"phase",fleet.reservePhase(r.id(),stop,dir),
+            "seats",30,"standing_capacity",50,"seated",0,"standing",0,"base_eta",4,"previous_travel",6,"following_eta",12,"following_free",18,"waiting",0,
+            "reserve_stop",stop,"reserve_dir",dir,"dispatch_at",now.toString(),"expires_at",now.plusSeconds(RESERVE_MINUTES*60L).toString(),
+            "updated_at",now.toString(),"source","Rezerv avtobus (demo)"));
+    }
+    /** Reserve dispatched straight from a density alert, without a twin scenario. */
+    @Transactional public void dispatchReserve(String route,String stop,String dir,int alertId) {
+        var r=catalog.get(route);
+        var state=store.lock(n(fleet.state(route),"id"),"route_state");
+        addReserve(r,stop,dir,"RA-"+alertId);
+        state.put("version",n(state,"version")+1);store.update("route_state",state);
+        store.add("action",map("route",route,"alert_id",alertId,"action","reserve","created_at",Instant.now().toString(),"status","Sıxlıq xəbərdarlığı ilə rezerv göndərildi"));
+    }
     @Transactional public Object apply(int id,String policy) {
         var scenario=store.lock(id,"scenario");
         if(Boolean.TRUE.equals(scenario.get("applied"))) {
@@ -57,12 +73,7 @@ public class TwinService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Park və ya hadisələr dəyişib. Ssenarini yenidən hesablayın.");
         var r=catalog.get(route);
         if(policy.equals("reserve")) {
-            if(fleet.buses(route,stop,dir).size()>=r.buses()+RESERVE_EXTRA) throw new ResponseStatusException(HttpStatus.CONFLICT,"Demo rezerv limiti: hər xəttdə "+RESERVE_EXTRA+" əlavə avtobus");
-            var now=Instant.now();
-            store.add("bus",map("route",route,"name",r.name(),"vehicle","RS-"+id,"phase",fleet.reservePhase(route,stop,dir),
-                "seats",30,"standing_capacity",50,"seated",0,"standing",0,"base_eta",4,"previous_travel",6,"following_eta",12,"following_free",18,"waiting",0,
-                "reserve_stop",stop,"reserve_dir",dir,"dispatch_at",now.toString(),"expires_at",now.plusSeconds(RESERVE_MINUTES*60L).toString(),
-                "updated_at",now.toString(),"source","Rezerv avtobus (demo)"));
+            addReserve(r,stop,dir,"RS-"+id);
         } else if(policy.equals("priority")) {
             // A bounded, expiring measure: applying again only extends the window, it never stacks.
             state.put("priority_until",Instant.now().getEpochSecond()+FleetService.PRIORITY_SECONDS);

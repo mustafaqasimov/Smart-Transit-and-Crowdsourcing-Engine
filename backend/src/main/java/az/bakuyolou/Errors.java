@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 import org.slf4j.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.server.ResponseStatusException;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 /** Every API error is {"detail": "..."} in Azerbaijani. */
 @RestControllerAdvice

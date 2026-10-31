@@ -1,5 +1,5 @@
-// YolBaku service worker: installable app shell. Live API data is never cached.
-const CACHE = 'yolbaku-shell-v1';
+// BakuYolOu service worker: installable app shell. Live API data is never cached.
+const CACHE = 'bakuyolou-shell-v1';
 const SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png', '/favicon.png'];
 
 self.addEventListener('install', event => {

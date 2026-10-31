@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 import jakarta.validation.constraints.*;
 
 public final class Requests {

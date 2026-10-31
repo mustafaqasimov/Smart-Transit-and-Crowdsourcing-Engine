@@ -1,12 +1,12 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.time.Instant;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import static az.yolbaku.Store.map;
-import static az.yolbaku.DecisionEngine.n;
+import static az.bakuyolou.Store.map;
+import static az.bakuyolou.DecisionEngine.n;
 
 /**
  * Synthetic fleet: every bus shuttles terminus to terminus and back on a fixed cycle (2 × one-way minutes).
@@ -18,7 +18,8 @@ public class FleetService {
     static final int[] CROWD_PERCENT={15,45,80,100};
     static final String[] CROWD_LABEL={"Boş","Normal","Dolu","Çox dolu"};
     static final long PRIORITY_SECONDS=900, REPORT_SECONDS=600, GPS_SECONDS=120, TELEMETRY_SECONDS=600;
-    static final int PRIORITY_GAIN=3, TRANSFER_BUFFER=2;
+    static final int PRIORITY_GAIN=3, TRANSFER_BUFFER=2, HIGH=85;
+    static final double CELL=0.004; // density grid cell, ~400 m
     private final Store store;
     private final RouteCatalog catalog;
     public FleetService(Store store,RouteCatalog catalog) {this.store=store;this.catalog=catalog;}
@@ -117,7 +118,7 @@ public class FleetService {
             b.putAll(map("lat",lat,"lng",lng,"eta",eta,"dir",busDir,"headsign",headsign(route,busDir),
                 "occupancy",(int)Math.round(occupancy),"sensor_occupancy",(int)Math.round(100*sensor/capacity),"crowd",crowd,
                 "capacity",capacity,"onboard",onboard,"seated",seated,"standing",Math.min(standCap,onboard-seated),"free",capacity-onboard,
-                "next_stop",end.name(),"progress",progress,"reserve",b.containsKey("reserve_stop"),"source",source,"updated_at",s.now().toString()));
+                "next_stop",end.name(),"next_stop_id",end.id(),"progress",progress,"reserve",b.containsKey("reserve_stop"),"source",source,"updated_at",s.now().toString()));
             result.add(b);
         }
         result.sort(Comparator.comparingInt(b->n(b,"eta")));
@@ -132,6 +133,33 @@ public class FleetService {
             "source","Bakı məkanları; nümunə marşrutlar, sintetik GPS və doluluq","updated_at",s.now().toString());
     }
 
+    /** Every bus in the city, positioned from (synthetic or operator) GPS. */
+    public List<Map<String,Object>> cityBuses(Snapshot s) {
+        var all=new ArrayList<Map<String,Object>>();
+        for(var r:catalog.all()) for(var b:buses(s,r.id(),r.stops().get(0).id(),"f")) {b.put("color",r.color());all.add(b);}
+        return all;
+    }
+    static final int ALERT_COUNTER=95, ALERT_CROWD=80;
+    /** Worth a reserve: the counter is nearly full, or passengers report it as Dolu / Çox dolu. */
+    static boolean high(Map<String,Object> bus) {
+        return n(bus,"occupancy")>=ALERT_COUNTER||(bus.get("crowd") instanceof Map<?,?> c&&((Number)c.get("percent")).intValue()>=ALERT_CROWD);
+    }
+    /** Passengers on board aggregated into ~400 m GPS cells: the density map. */
+    public Object density() {
+        var s=snapshot();var buses=cityBuses(s);
+        var grid=new LinkedHashMap<String,double[]>(); // lat sum, lng sum, buses, onboard, capacity
+        for(var b:buses) {
+            double lat=((Number)b.get("lat")).doubleValue(), lng=((Number)b.get("lng")).doubleValue();
+            var c=grid.computeIfAbsent(Math.floor(lat/CELL)+":"+Math.floor(lng/CELL),k->new double[5]);
+            c[0]+=lat;c[1]+=lng;c[2]++;c[3]+=n(b,"onboard");c[4]+=n(b,"capacity");
+        }
+        var cells=grid.values().stream().map(c->{int occ=(int)Math.round(100*c[3]/c[4]);
+            return map("lat",c[0]/c[2],"lng",c[1]/c[2],"buses",(int)c[2],"onboard",(int)c[3],"occupancy",occ,"level",occ>=HIGH?"high":occ>55?"medium":"low");})
+            .sorted(Comparator.comparingInt(c->-n(c,"onboard"))).toList();
+        return map("cells",cells,"buses",buses.stream().map(b->map("id",b.get("id"),"vehicle",b.get("vehicle"),"route",b.get("route"),"color",b.get("color"),
+            "lat",b.get("lat"),"lng",b.get("lng"),"occupancy",b.get("occupancy"),"high",high(b))).toList(),
+            "high_threshold",HIGH,"cell_meters",400,"updated_at",s.now().toString());
+    }
     private Map<String,Object> leg(Snapshot s,RouteCatalog.Route r,int a,int b,Map<String,List<Map<String,Object>>> cache) {
         String dir=a<b?"f":"b";
         var from=r.stops().get(a); var to=r.stops().get(b);

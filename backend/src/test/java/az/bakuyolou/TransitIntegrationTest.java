@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 import com.fasterxml.jackson.databind.*;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(properties={"DEMO_ACCESS_ENABLED=true","OPERATOR_KEY=integration-only-key"})
+@SpringBootTest(properties={"DEMO_ACCESS_ENABLED=true","OPERATOR_KEY=integration-only-key","ALERT_INITIAL_DELAY_MS=3600000"})
 @AutoConfigureMockMvc @Transactional
 @EnabledIfEnvironmentVariable(named="DATABASE_URL",matches=".*transit_test$")
 class TransitIntegrationTest {
@@ -93,5 +93,22 @@ class TransitIntegrationTest {
         mvc.perform(post("/api/events").cookie(c).contentType("application/json").content("{\"title\":\"New demo event\",\"route\":\"125\",\"type\":\"event\",\"delay\":2,\"demand\":5,\"passenger\":\"Test warning\"}")).andExpect(status().isCreated());
         apply(c,id,"reserve",409);
         mvc.perform(get("/api/events")).andExpect(jsonPath("$.events[?(@.title=='New demo event')]").exists());
+    }
+    @Test void veryFullReportRaisesReserveAlertThatDispatchesOnce()throws Exception{
+        var passenger=login("passenger");var op=login("operator");
+        int bus=json(mvc.perform(get("/api/fleet").param("route","H1"))).get("buses").get(0).get("id").asInt();
+        int before=json(mvc.perform(get("/api/fleet").param("route","H1"))).get("buses").size();
+        mvc.perform(post("/api/reports").cookie(passenger).contentType("application/json").content("{\"bus_id\":"+bus+",\"client_id\":\"alert-test\",\"level\":3}")).andExpect(status().isCreated());
+        mvc.perform(get("/api/alerts").cookie(passenger)).andExpect(status().isForbidden());
+        JsonNode alert=null;for(var a:json(mvc.perform(get("/api/alerts").cookie(op))).get("open")) if(a.get("route").asText().equals("H1")) alert=a;
+        assertNotNull(alert,"open H1 alert");assertEquals("Əlavə rezerv avtobus ayrılsın",alert.get("recommendation").asText());
+        mvc.perform(post("/api/alerts/"+alert.get("id")+"/dispatch").cookie(op)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("dispatched"));
+        mvc.perform(post("/api/alerts/"+alert.get("id")+"/dispatch").cookie(op)).andExpect(status().isConflict());
+        assertEquals(before+1,json(mvc.perform(get("/api/fleet").param("route","H1"))).get("buses").size());
+    }
+    @Test void densityMapAggregatesGpsCells()throws Exception{
+        var d=json(mvc.perform(get("/api/density")).andExpect(status().isOk()));
+        int buses=d.get("buses").size(),inCells=0;for(var c:d.get("cells")){inCells+=c.get("buses").asInt();assertTrue(c.get("occupancy").asInt()>=0);}
+        assertTrue(buses>=40);assertEquals(buses,inCells);
     }
 }

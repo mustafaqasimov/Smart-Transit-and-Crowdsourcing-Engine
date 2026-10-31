@@ -1,11 +1,11 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.time.Instant;
 import org.springframework.boot.*;
 import org.springframework.stereotype.Component;
 import org.springframework.core.annotation.Order;
 import org.springframework.transaction.annotation.Transactional;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 /** Idempotent: adds missing route states and BK-route-N demo buses without touching existing records. */
 @Component @Order(1)

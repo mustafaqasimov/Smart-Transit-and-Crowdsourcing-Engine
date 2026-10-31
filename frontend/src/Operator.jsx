@@ -1,10 +1,16 @@
 import React,{useState,useEffect,useRef,useCallback} from 'react';
-import {Activity,Bus,Clock,Users,Play,ArrowRight,Check,Camera,Upload,SlidersHorizontal,AlertTriangle,Plus,Film,Image as ImageIcon,Zap} from 'lucide-react';
+import DensityMap from './DensityMap';
+import {Activity,Bus,Clock,Users,Play,ArrowRight,Check,Camera,Upload,SlidersHorizontal,AlertTriangle,Plus,Film,Image as ImageIcon,Zap,Flame,BellRing} from 'lucide-react';
 import TransitMap,{occupancyLevel} from './TransitMap';
 import Cabin from './Cabin';
 import {api} from './api';
 
 const POLICY={reserve:'Rezerv avtobus',priority:'Siqnal prioriteti',rebalance:'Yük bölgüsü'};
+const POSTURE={seated:'oturur',standing:'ayaqüstə',unknown:'bilinmir'};
+function Postures({counts,label,title}) {
+  if(!counts)return null;
+  return <div className="posture-row" aria-label={label}>{title&&<small>{title}</small>}{Object.entries(POSTURE).map(([k,name])=><span key={k} className={'posture '+k}><i/>{counts[k]} {name}</span>)}</div>;
+}
 
 function QueueChart({before,after}) {
   const max=Math.max(1,...before.map(p=>p.queue),...after.map(p=>p.queue));
@@ -12,7 +18,7 @@ function QueueChart({before,after}) {
   return <div className="queue-chart"><div className="chart-legend"><span><i/> Müdaxiləsiz</span><span><i/> Seçilmiş həll</span></div><svg viewBox="0 0 680 210" role="img" aria-label="Müdaxilədən əvvəl və sonra dayanacaq növbəsi"><text x="4" y="22">{max}</text><text x="12" y="174">0</text>{[35,80,125,170].map(y=><line key={y} x1="35" x2="655" y1={y} y2={y} stroke="#e6eaf3"/>)}<polyline points={points(before)} fill="none" stroke="#a5adc5" strokeWidth="3" strokeDasharray="6 5"/><polyline points={points(after)} fill="none" stroke="#6155e8" strokeWidth="4"/><text x="35" y="200">İndi</text><text x="570" y="200">{before.length-1} dəqiqə sonra</text></svg></div>
 }
 function Boxes({detections}) {
-  return detections.map((d,i)=><span key={d.track_id??i} className="detection-box" style={{left:d.x*100+'%',top:d.y*100+'%',width:d.width*100+'%',height:d.height*100+'%'}}><b>{d.track_id!=null?`#${d.track_id} · `:''}{Math.round(d.confidence*100)}%</b></span>);
+  return detections.map((d,i)=><span key={d.track_id??i} className={'detection-box '+(d.posture||'unknown')} style={{left:d.x*100+'%',top:d.y*100+'%',width:d.width*100+'%',height:d.height*100+'%'}}><b>{d.track_id!=null?`#${d.track_id} · `:''}{POSTURE[d.posture]||''} {Math.round(d.confidence*100)}%</b></span>);
 }
 /** People per analysed frame; clicking a bar seeks the video. */
 function Timeline({frames,time,duration,onSeek}) {
@@ -43,8 +49,9 @@ function VideoAnalysis({bus,notify}) {
       <Timeline frames={result.frames} time={time} duration={result.analyzed_seconds} onSeek={seek}/></div>
       :<div className="camera-empty"><Film size={40}/><b>Analiz üçün video seç</b><span>MP4/WebM/MOV · 50 MB · ilk 30 saniyə</span></div>}
     {result&&<div className="vision-result video" data-testid="video-result"><div><strong>{frame?.people??0} insan</strong><small>bu kadrda</small></div><div><strong>{result.max_visible}</strong><small>ən çox</small></div><div><strong>{result.average_visible}</strong><small>orta</small></div><div><strong>{result.unique_people}</strong><small>fərqli (izlənən)</small></div><span>{result.analyzed_frames} kadr · {result.sample_fps} kadr/san · {(result.inference_ms/1000).toFixed(1)} s · {result.model}</span></div>}
+    {result&&<><Postures counts={frame?.postures} label="Bu kadrda duruş" title="Bu kadr"/><Postures counts={result.track_postures} label="İzlənən insanlar üzrə duruş" title="Klip üzrə"/></>}
     <div className="vision-buttons"><button className="primary" disabled={busy} onClick={()=>run()}><Play size={16}/>{busy?'Video analiz edilir…':'Video nümunəsini işə sal'}</button><label className={'upload-button '+(busy?'disabled':'')}><Upload size={17}/> Video yüklə<input aria-label="Kamera videosu" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" disabled={busy} onChange={e=>{if(e.target.files[0])run(e.target.files[0]);e.target.value=''}}/></label></div>
-    <p className="fine">Video saniyədə ~3 kadr seçilərək analiz olunur; ByteTrack eyni insanı kadrlar arasında izləyir (#nömrə). Video serverdə saxlanmır. Nümunə video Ultralytics test şəkli üzərində süni kamera hərəkətidir.</p>
+    <p className="fine">Video saniyədə ~3 kadr seçilərək analiz olunur; ByteTrack eyni insanı kadrlar arasında izləyir (#nömrə). Alt sətir hər izlənən insanın klip üzrə ən çox görünən duruşudur. Video serverdə saxlanmır. Nümunə video Ultralytics test şəkli üzərində süni kamera hərəkətidir.</p>
   </>;
 }
 function ImageAnalysis({bus,notify}) {
@@ -53,23 +60,30 @@ function ImageAnalysis({bus,notify}) {
   async function run(file){setBusy(true);try{let data;if(file){const body=new FormData();body.append('file',file);data=await api('/vision/detect?bus_id='+bus.id,body);setImage(URL.createObjectURL(file));}else{data=await api('/vision/demo?bus_id='+bus.id,{});setImage('/api/vision/sample');}setResult(data);notify(`YOLO ${data.visible_people} görünən insan aşkarladı.`)}catch(e){notify(e.message)}finally{setBusy(false)}}
   return <>
     {image?<div className="detection-image"><img src={image} alt="YOLO tərəfindən analiz edilən kadr"/>{result&&<Boxes detections={result.detections}/>}</div>:<div className="camera-empty"><Camera size={40}/><b>Analiz üçün kadr seç</b><span>JPEG/PNG/WebP · 8 MB · serverdə saxlanmır</span></div>}
-    {result&&<div className="vision-result" data-testid="vision-result"><strong>{result.visible_people} insan</strong><span>{result.inference_ms} ms · {result.model}</span></div>}
+    {result&&<><div className="vision-result" data-testid="vision-result"><strong>{result.visible_people} insan</strong><span>{result.inference_ms} ms · {result.model}</span></div><Postures counts={result.postures} label="Duruş"/></>}
     <div className="vision-buttons"><button className="primary" disabled={busy} onClick={()=>run()}><Play size={16}/>{busy?'YOLO analiz edir…':'YOLO nümunəsini işə sal'}</button><label className={'upload-button '+(busy?'disabled':'')}><Upload size={17}/> Şəkil yüklə<input aria-label="Kamera şəkli" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e=>{if(e.target.files[0])run(e.target.files[0]);e.target.value=''}}/></label></div>
-    <p className="fine">Nümunə: Ultralytics-in avtobusun xaricindən çəkilmiş test şəkli. Aşkarlanan insanlar salonun ümumi doluluğunu göstərmir.</p>
+    <p className="fine">Oturur/ayaqüstə YOLO26 pose açar nöqtələrindən (çiyin–omba–diz bucağı) təxmin edilir; əmin olmayanda “bilinmir” deyilir. Nümunə: Ultralytics-in avtobusun xaricindən çəkilmiş test şəkli. Aşkarlanan insanlar salonun ümumi doluluğunu göstərmir.</p>
   </>;
 }
 function Vision({bus,notify}) {
   const [mode,setMode]=useState('image');
-  return <section className="panel vision-panel"><div className="section-title"><div><span className="eyebrow">KOMPÜTER GÖRMƏSİ</span><h3><Camera size={19}/> YOLO müşahidəsi</h3></div><span className="tag">CPU · YOLO11n</span></div>
+  return <section className="panel vision-panel"><div className="section-title"><div><span className="eyebrow">KOMPÜTER GÖRMƏSİ</span><h3><Camera size={19}/> YOLO müşahidəsi</h3></div><span className="tag">CPU · YOLO26s-pose</span></div>
     <div className="segmented" role="tablist" aria-label="Analiz növü">{[['image',ImageIcon,'Şəkil'],['video',Film,'Video']].map(([id,Icon,label])=><button key={id} role="tab" aria-selected={mode===id} className={mode===id?'selected':''} onClick={()=>setMode(id)}><Icon size={15}/>{label}</button>)}</div>
     {mode==='image'?<ImageAnalysis bus={bus} notify={notify}/>:<VideoAnalysis bus={bus} notify={notify}/>}
   </section>;
 }
 
 export default function Operator({catalog,fleet,bus,select,changeRoute,refresh,notify}) {
-  const [horizon,setHorizon]=useState(20),[demand,setDemand]=useState(1.5),[delay,setDelay]=useState(3),[scenario,setScenario]=useState(null),[policy,setPolicy]=useState('reserve'),[busy,setBusy]=useState(false),[ops,setOps]=useState(null),[events,setEvents]=useState([]);
+  const [horizon,setHorizon]=useState(20),[demand,setDemand]=useState(1.5),[delay,setDelay]=useState(3),[scenario,setScenario]=useState(null),[policy,setPolicy]=useState('reserve'),[busy,setBusy]=useState(false),[ops,setOps]=useState(null),[events,setEvents]=useState([]),[density,setDensity]=useState(null),[alerts,setAlerts]=useState({open:[],recent:[]});
+  const seenAlerts=useRef(null);
   useEffect(()=>{setScenario(null)},[fleet.route.id,fleet.stop_id,fleet.dir,horizon,demand,delay]);
-  const loadOps=useCallback(async()=>{try{const [o,e]=await Promise.all([api('/operator'),api('/events')]);setOps(o);setEvents(e.events)}catch(e){notify(e.message)}},[notify]);
+  const loadOps=useCallback(async()=>{try{
+    const [o,e,d,a]=await Promise.all([api('/operator'),api('/events'),api('/density'),api('/alerts')]);setOps(o);setEvents(e.events);setDensity(d);setAlerts(a);
+    // Toast only for alerts raised after the page opened.
+    const fresh=seenAlerts.current?a.open.filter(x=>!seenAlerts.current.has(x.id)):[];
+    seenAlerts.current=new Set(a.open.map(x=>x.id));
+    if(fresh.length)notify(`⚠️ ${fresh[0].title}. Tövsiyə: ${fresh[0].recommendation.toLowerCase()}.`);
+  }catch(e){notify(e.message)}},[notify]);
   useEffect(()=>{loadOps();const timer=setInterval(loadOps,5000);return()=>clearInterval(timer)},[loadOps]);
   async function action(fn){setBusy(true);try{await fn();await refresh();await loadOps()}catch(e){notify(e.message)}finally{setBusy(false)}}
   async function preview(){await action(async()=>{const s=await api('/twin/preview',{route:fleet.route.id,stop_id:fleet.stop_id,dir:fleet.dir,horizon,demand_multiplier:demand,delay});setScenario(s);setPolicy(s.options[0].id)})}
@@ -93,6 +107,16 @@ export default function Operator({catalog,fleet,bus,select,changeRoute,refresh,n
     <section className="panel fleet-panel" id="fleet" data-section><div className="section-title"><div><span className="eyebrow">AVTOBUS PARKI</span><h2>{fleet.route.id} xətti · {fleet.buses.length} avtobus</h2></div><span className="tag">{fleet.route.stops.find(s=>s.id===fleet.stop_id)?.name} dayanacağına ETA</span></div>
       <div className="table-scroll"><table className="fleet-table"><thead><tr><th>Avtobus</th><th>İstiqamət</th><th>Növbəti dayanacaq</th><th>ETA</th><th>Doluluq</th><th>Bildiriş</th><th>Mənbə</th></tr></thead>
         <tbody>{fleet.buses.map(b=><tr key={b.id} className={b.id===bus.id?'selected':''} onClick={()=>select(b.id)}><td><span className="arrival-emoji" aria-hidden="true">🚌</span> <b>{b.vehicle}</b>{b.reserve&&<em className="reserve-tag">rezerv</em>}</td><td>→ {b.headsign}</td><td>{b.next_stop}</td><td><b>{b.eta} dəq</b></td><td><div className="table-occupancy"><div className={'capacity-track '+occupancyLevel(b.occupancy)}><i style={{width:Math.min(100,b.occupancy)+'%'}}/></div>{b.occupancy}%</div></td><td>{b.crowd?`${b.crowd.reports} · ${b.crowd.label}`:'—'}</td><td><small>{b.source}</small></td></tr>)}</tbody></table></div></section>
+
+    <section className="panel density-panel" id="density" data-section><div className="section-title"><div><span className="eyebrow">GPS ƏSASLI SIXLIQ</span><h2><Flame size={20}/> Şəhər üzrə sıxlıq xəritəsi</h2></div><span className="live-label"><span className="pulse"/> Hər 5 saniyə</span></div>
+      <div className="density-grid"><DensityMap catalog={catalog} density={density} alerts={alerts.open}/>
+        <div className="alert-list"><div className="alert-head"><BellRing size={17}/><b>Xəbərdarlıqlar</b><span className={'tag'+(alerts.open.length?' alert-count':'')}>{alerts.open.length} açıq</span></div>
+          {!alerts.open.length&&<p className="subtle">Yüksək sıxlıq yoxdur. Avtobus sayğacı ≥95% göstərdikdə və ya sərnişinlər “Dolu / Çox dolu” bildirdikdə burada rezerv tövsiyəsi yaranır.</p>}
+          {alerts.open.map(a=><div className="alert-row" key={a.id}><div className="alert-title"><span className="route-badge tiny" style={{background:a.color}}>{a.route}</span><b>{a.route} xətti · {a.vehicle}</b><small>{new Date(a.created_at).toLocaleTimeString('az',{hour:'2-digit',minute:'2-digit'})}</small></div>
+            <p>{a.reason}</p><div className="recommendation"><Zap size={14}/>Tövsiyə: {a.recommendation}</div>
+            <div className="alert-actions"><button className="primary" disabled={busy} onClick={()=>action(async()=>{const r=await api(`/alerts/${a.id}/dispatch`,{});notify(`Rezerv avtobus RA-${r.id} ${r.route} xəttinə göndərildi (${r.stop_name}).`)})}><Bus size={15}/>Rezerv ayır</button><button className="soft" disabled={busy} onClick={()=>action(()=>api(`/alerts/${a.id}/dismiss`,{}))}>Bağla</button></div></div>)}
+          {alerts.recent.length>0&&<div className="alert-recent">{alerts.recent.slice().reverse().map(a=><small key={a.id}>{a.status==='dispatched'?'✓ Rezerv göndərildi':'– Bağlandı'} · {a.route} · {a.vehicle}</small>)}</div>}
+        </div></div></section>
 
     <div id="vision" data-section><div className="section-title"><div><span className="eyebrow">AVTOBUS SƏVİYYƏSİNDƏ MÜŞAHİDƏ</span><h2>Hər sərnişin görünəndə.</h2></div><select aria-label="Salon avtobusu" value={bus.id} onChange={e=>select(+e.target.value)}>{fleet.buses.map(b=><option key={b.id} value={b.id}>{b.vehicle} · {b.occupancy}%</option>)}</select></div>
     <div className="vision-grid"><section className="panel"><Cabin bus={bus}/></section><Vision key={bus.id} bus={bus} notify={notify}/></div></div>

@@ -1,8 +1,8 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.util.*;
-import static az.yolbaku.Store.map;
-import static az.yolbaku.DecisionEngine.n;
+import static az.bakuyolou.Store.map;
+import static az.bakuyolou.DecisionEngine.n;
 
 /** Deterministic discrete-minute queue model. No trained ML or optimality claim. */
 public final class TwinEngine {

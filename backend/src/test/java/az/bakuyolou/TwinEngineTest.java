@@ -1,9 +1,9 @@
-package az.yolbaku;
+package az.bakuyolou;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import static az.yolbaku.Store.map;
-import static az.yolbaku.DecisionEngine.n;
+import static az.bakuyolou.Store.map;
+import static az.bakuyolou.DecisionEngine.n;
 class TwinEngineTest {
     List<Map<String,Object>> fleet=List.of(map("eta",8,"free",5),map("eta",14,"free",40));
     @Test void reserveServesMoreAndReducesQueueTime(){

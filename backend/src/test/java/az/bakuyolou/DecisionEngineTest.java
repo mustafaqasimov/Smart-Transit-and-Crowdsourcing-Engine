@@ -1,7 +1,7 @@
-package az.yolbaku;
+package az.bakuyolou;
 import org.junit.jupiter.api.Test;
 import java.util.*;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 import static org.junit.jupiter.api.Assertions.*;
 class DecisionEngineTest {
     Map<String,Object> bus(){ return map("id",1,"route","125","seated",30,"standing",40,"seats",30,"standing_capacity",50,"waiting",65,"following_free",5,"following_eta",15,"base_eta",4,"previous_travel",6); }

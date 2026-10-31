@@ -1,4 +1,6 @@
-$ErrorActionPreference = 'Stop'
+# Native commands are checked through $LASTEXITCODE. 'Stop' would make Windows PowerShell 5.1
+# abort on any docker progress line written to stderr once output is redirected.
+$ErrorActionPreference = 'Continue'
 Set-Location (Join-Path $PSScriptRoot '..')
 $qa = @('-f', 'compose.yaml', '-f', 'compose.qa.yaml')
 docker compose @qa config --quiet

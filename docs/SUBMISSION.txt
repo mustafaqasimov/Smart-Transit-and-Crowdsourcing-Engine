@@ -1,5 +1,5 @@
 Digital Azerbaijan Challenge 2026 — yarımfinal
-Layihə: YolBaku — Smart Transit & Crowdsourcing Engine
+Layihə: BakuYolOu — Smart Transit & Crowdsourcing Engine
 
 PROBLEM VƏ HƏLL
 Sərnişin avtobusun nə vaxt gələcəyini və nə qədər dolu olduğunu bir ekranda görür.
@@ -18,7 +18,7 @@ TƏQDİMAT AXINI
 AI İSTİFADƏSİ BƏYANNAMƏSİ
 Codex generativ AI köməkçisi arxitektura, Java/React/Python implementasiyası,
 test ssenariləri, UI dizaynı, nasazlıq aradan qaldırılması və sənədləşmədə istifadə olunub.
-Tətbiqin iş vaxtındakı YOLO11n komponenti əvvəlcədən öyrədilmiş insan aşkarlama modelidir.
+Tətbiqin iş vaxtındakı YOLO26s-pose komponenti əvvəlcədən öyrədilmiş insan və poza aşkarlama modelidir.
 Digital twin qərarları ayrıca qayda/növbə modelidir; öyrədilmiş ML proqnozu deyil.
 Nəticələr avtomatik backend və brauzer testləri ilə yoxlanılıb; konkret nəticələr docs/QA.md-dədir.
 

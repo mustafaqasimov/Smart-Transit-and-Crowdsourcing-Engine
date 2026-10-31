@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,8 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.*;
 import java.security.*;
 import java.util.*;
-import static az.yolbaku.Store.map;
-import static az.yolbaku.DemoAccess.equal;
+import static az.bakuyolou.Store.map;
+import static az.bakuyolou.DemoAccess.equal;
 
 @RestController @RequestMapping("/api")
 public class Api {
@@ -21,9 +21,10 @@ public class Api {
     private final ObjectMapper mapper;
     private final DemoAccess access;
     private final RouteCatalog catalog;
+    private final AlertService alerts;
     private final HttpServletRequest request;
     private final SecureRandom random=new SecureRandom();
-    public Api(Store store,ObjectMapper mapper,DemoAccess access,RouteCatalog catalog,HttpServletRequest request) { this.store=store;this.mapper=mapper;this.access=access;this.catalog=catalog;this.request=request; }
+    public Api(Store store,ObjectMapper mapper,DemoAccess access,RouteCatalog catalog,AlertService alerts,HttpServletRequest request) { this.store=store;this.mapper=mapper;this.access=access;this.catalog=catalog;this.alerts=alerts;this.request=request; }
     private static boolean recent(Map<String,Object> row,String field,long seconds) {
         return row.get(field)!=null&&Instant.parse(row.get(field).toString()).isAfter(Instant.now().minusSeconds(seconds));
     }
@@ -46,7 +47,13 @@ public class Api {
     @PostMapping("/reports")
     public synchronized ResponseEntity<Object> report(@Valid @RequestBody Requests.Report p) {
         access.user(request);
-        store.get(p.bus_id(),"bus");
+        var bus=store.get(p.bus_id(),"bus");
+        var response=saveReport(p);
+        // A "very full" report raises a reserve recommendation right away instead of at the next scan.
+        alerts.check(bus.get("route").toString());
+        return response;
+    }
+    private ResponseEntity<Object> saveReport(Requests.Report p) {
         String reporter=access.identity(request,p.client_id());
         var mine=store.list("report").stream().filter(r->reporter.equals(r.get("reporter"))).toList();
         if(mine.stream().filter(r->recent(r,"updated_at",60)).count()>=REPORTS_PER_MINUTE)

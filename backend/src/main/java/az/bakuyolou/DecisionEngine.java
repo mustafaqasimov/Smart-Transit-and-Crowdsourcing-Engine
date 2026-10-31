@@ -1,7 +1,7 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.util.*;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 /** Explainable baseline, not a trained model. Keeps Python's half-even rounding. */
 public final class DecisionEngine {

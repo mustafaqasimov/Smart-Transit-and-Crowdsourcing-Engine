@@ -1,6 +1,6 @@
 {
-  "name": "YolBaku — Bakı nəqliyyatı",
-  "short_name": "YolBaku",
+  "name": "BakuYolOu — Bakı nəqliyyatı",
+  "short_name": "BakuYolOu",
   "description": "Gələn avtobuslar, doluluq, gediş planı və operator üçün rəqəmsal əkiz.",
   "lang": "az",
   "start_url": "/",

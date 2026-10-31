@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 import com.fasterxml.jackson.databind.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(properties={"OPERATOR_KEY=integration-only-key"}) @AutoConfigureMockMvc @Transactional
+@SpringBootTest(properties={"OPERATOR_KEY=integration-only-key","ALERT_INITIAL_DELAY_MS=3600000"}) @AutoConfigureMockMvc @Transactional
 @EnabledIfEnvironmentVariable(named="DATABASE_URL",matches=".*transit_test$")
 class ApiIntegrationTest {
     @Autowired MockMvc mvc;

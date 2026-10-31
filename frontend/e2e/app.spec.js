@@ -93,13 +93,26 @@ test('operator: twin preview and apply, fleet table, YOLO image and video',async
   await expect(page.locator('.priority-tag')).toContainText('Prioritet aktiv');
   await expect(page.locator('.fleet-table tbody tr')).toHaveCount(4);
 
+  // GPS density map, and a 'very full' report turning into a reserve recommendation.
+  await expect(page.locator('path.density-cell').first()).toBeVisible();
+  const busId=(await (await page.request.get('/api/fleet?route=125')).json()).buses[0].id;
+  expect((await page.request.post('/api/reports',{data:{bus_id:busId,level:3,client_id:'e2e-operator-device'}})).ok()).toBeTruthy();
+  const alert=page.locator('.alert-row',{hasText:'125 xətti'});
+  await expect(alert).toBeVisible({timeout:15000});
+  await expect(alert).toContainText('Əlavə rezerv avtobus ayrılsın');
+  await alert.getByRole('button',{name:'Rezerv ayır'}).click();
+  await expect(page.getByRole('status')).toContainText('Rezerv avtobus RA-');
+  await expect(page.locator('.fleet-table tbody tr')).toHaveCount(5);
+  await page.locator('#density').screenshot({path:testInfo.outputPath('density-alerts.png')});
+
   await page.getByRole('button',{name:'YOLO nümunəsini işə sal'}).click();
   await expect(page.getByTestId('vision-result')).toContainText('insan',{timeout:90000});
   expect(await page.locator('.detection-image .detection-box').count()).toBeGreaterThan(0);
   const image=await page.request.get('/api/vision/sample');
   await page.getByLabel('Kamera şəkli').setInputFiles({name:'sample.jpg',mimeType:'image/jpeg',buffer:await image.body()});
   await expect(page.getByRole('button',{name:'YOLO nümunəsini işə sal'})).toBeEnabled({timeout:90000});
-  await expect(page.getByTestId('vision-result')).toContainText('YOLO11n');
+  await expect(page.getByTestId('vision-result')).toContainText('YOLO26s-pose');
+  await expect(page.getByLabel('Duruş',{exact:true})).toContainText('ayaqüstə');
 
   await page.getByRole('tab',{name:'Video'}).click();
   await page.getByRole('button',{name:'Video nümunəsini işə sal'}).click();
@@ -112,7 +125,8 @@ test('operator: twin preview and apply, fleet table, YOLO image and video',async
   expect(clip.headers()['content-type']).toContain('video/webm');
   await page.getByLabel('Kamera videosu').setInputFiles({name:'clip.webm',mimeType:'video/webm',buffer:await clip.body()});
   await expect(page.getByRole('button',{name:'Video nümunəsini işə sal'})).toBeEnabled({timeout:120000});
-  await expect(page.getByTestId('video-result')).toContainText('ByteTrack');
+  await expect(page.getByTestId('video-result')).toContainText('YOLO26s-pose + ByteTrack');
+  await expect(page.getByLabel('İzlənən insanlar üzrə duruş')).toContainText('oturur');
 
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:testInfo.outputPath('operator-mobile.png'),fullPage:true});

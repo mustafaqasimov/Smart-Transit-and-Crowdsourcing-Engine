@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import java.io.*;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 @RestController @RequestMapping("/api/vision")
 public class VisionApi {
@@ -49,7 +49,7 @@ public class VisionApi {
         try {
             Map<String,Object> data=mapper.readValue(response,new TypeReference<>(){});
             var record=new LinkedHashMap<>(data);
-            if(record.get("frames") instanceof List<?> frames) record.put("frames",frames.stream().map(f->map("t",((Map<?,?>)f).get("t"),"people",((Map<?,?>)f).get("people"))).toList());
+            if(record.get("frames") instanceof List<?> frames) record.put("frames",frames.stream().map(f->map("t",((Map<?,?>)f).get("t"),"people",((Map<?,?>)f).get("people"),"postures",((Map<?,?>)f).get("postures"))).toList());
             record.putAll(map("bus_id",bus,"created_at",Instant.now().toString()));
             var saved=store.add("vision",record);
             data.putAll(map("id",saved.get("id"),"bus_id",bus,"created_at",saved.get("created_at")));

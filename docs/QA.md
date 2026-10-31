@@ -28,6 +28,10 @@ UI axınlarında JavaScript səhvləri qeydə alınmadı. Mobil sənədin eni vi
 
 ## YOLO nəticəsi
 
+YOLO26s-pose (cari): `bus.jpg`-də 4 insan — 2 ayaqüstə, 2 bilinmir, 0 oturur (hamısı ayaqüstədir, yanlış “oturur” yoxdur); video nümunəsində 4 fərqli izlənən insan, ~1.5 s. Duruş qaydaları üçün 7 unit test image build-ində keçir.
+
+Əvvəlki ölçü (YOLO11n):
+
 YOLO11n həqiqi CPU inferensi Ultralytics-in `bus.jpg` nümunəsində **4 insan / 4 bounding box** qaytardı. İlk manual çağırış təxminən 3.6 saniyə, isinmiş modelin brauzer nümunəsi təxminən 0.7 saniyə çəkdi; bunlar bu kompüterdə müşahidədir, SLA deyil.
 
 Bu şəkil avtobusun xaricindəndir. Nəticə real salon doluluğunun və ya 2D oturacaq yerləşməsinin doğruluğunu sübut etmir. Video/ByteTrack CLI ayrıca test edilməyib; bu işdə UI-yə bağlı şəkil inferensi test edilib.

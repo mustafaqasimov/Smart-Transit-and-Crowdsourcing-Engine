@@ -1,4 +1,5 @@
-"""CPU YOLO service. Image coordinates describe detections, never bus seat locations."""
+"""CPU YOLO26 pose service: people, seated/standing estimate, ByteTrack ids for video.
+Image coordinates describe detections, never bus seat locations."""
 from io import BytesIO
 from threading import Lock
 from tempfile import NamedTemporaryFile
@@ -12,28 +13,38 @@ open_image = Image.open  # Keep Pillow validation; Ultralytics patches Image.ope
 os.environ["YOLO_AUTOINSTALL"] = "false"
 import cv2
 from ultralytics import YOLO
+from posture import posture, counts, UNKNOWN
 
-MODEL_PATH = os.getenv("YOLO_MODEL", "/models/yolo11n.pt")
+MODELS = os.getenv("MODELS_DIR", "/models")  # set for a local run outside Docker
+MODEL_PATH = os.getenv("YOLO_MODEL", os.path.join(MODELS, "yolo26s-pose.pt"))
+MODEL_NAME = "YOLO26s-pose"
 MAX_IMAGE = 8 * 1024 * 1024
 MAX_VIDEO = 50 * 1024 * 1024
 MAX_PIXELS = 16_000_000
 SAMPLE_FPS = 3      # analysed frames per second of video
 MAX_FRAMES = 90     # at most 30 s of video at SAMPLE_FPS
 
-app = FastAPI(title="YolBaku vision", version="2.1")
+app = FastAPI(title="BakuYolOu vision", version="2.1")
 model = YOLO(MODEL_PATH)
 lock = Lock()
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 def boxes(result, tracked=False):
     found = []
-    for box in result.boxes:
+    keypoints = result.keypoints.data.cpu().numpy() if result.keypoints is not None else []
+    for i, box in enumerate(result.boxes):
         x1, y1, x2, y2 = box.xyxyn[0].tolist()
-        item = dict(x=x1, y=y1, width=x2-x1, height=y2-y1, confidence=round(float(box.conf[0]), 3))
+        height = float(box.xyxy[0][3] - box.xyxy[0][1])
+        item = dict(x=x1, y=y1, width=x2-x1, height=y2-y1, confidence=round(float(box.conf[0]), 3),
+                    posture=posture(keypoints[i], height) if i < len(keypoints) else UNKNOWN)
+        # Only real tracker ids: a person without one is shown unnumbered rather than with a made-up id.
         if tracked and box.id is not None:
             item["track_id"] = int(box.id[0])
         found.append(item)
     return found
+
+def posture_counts(found):
+    return counts([d["posture"] for d in found])
 
 def detect(image, source):
     started = time.monotonic()
@@ -41,7 +52,7 @@ def detect(image, source):
         result = model.predict(image, classes=[0], conf=0.35, device="cpu", verbose=False)[0]
     found = boxes(result)
     return dict(kind="image", visible_people=len(found), detections=found, source=source,
-                model="YOLO11n", inference_ms=round((time.monotonic()-started)*1000),
+                postures=posture_counts(found), model=MODEL_NAME, inference_ms=round((time.monotonic()-started)*1000),
                 not_total_occupancy=True, width=image.width, height=image.height)
 
 def analyze_video(path, source):
@@ -58,7 +69,7 @@ def analyze_video(path, source):
         width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)); height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         if width * height > MAX_PIXELS:
             raise HTTPException(413, "Maximum frame size is 16 megapixels")
-        frames, tracks, index, truncated = [], set(), 0, False
+        frames, tracks, index, truncated = [], {}, 0, False
         with lock:
             tracker = YOLO(MODEL_PATH)  # fresh tracker state for every video
             while True:
@@ -74,41 +85,48 @@ def analyze_video(path, source):
                     result = tracker.track(frame, persist=True, classes=[0], conf=0.35, device="cpu",
                                            tracker="bytetrack.yaml", verbose=False)[0]
                     found = boxes(result, tracked=True)
-                    tracks.update(d["track_id"] for d in found if "track_id" in d)
-                    frames.append(dict(t=round(index / fps, 2), people=len(found), detections=found))
+                    for d in found:
+                        if "track_id" in d:
+                            tracks.setdefault(d["track_id"], []).append(d["posture"])
+                    frames.append(dict(t=round(index / fps, 2), people=len(found), postures=posture_counts(found), detections=found))
                 index += 1
     finally:
         capture.release()
     if not frames:
         raise HTTPException(422, "No frames decoded")
-    counts = [f["people"] for f in frames]
-    return dict(kind="video", source=source, model="YOLO11n + ByteTrack", frames=frames,
+    people = [f["people"] for f in frames]
+    # Per tracked person: the most frequent known posture over the clip, else unknown.
+    def settled(seen):
+        known = [p for p in seen if p != UNKNOWN]
+        return max(set(known), key=known.count) if known else UNKNOWN
+    return dict(kind="video", source=source, model=MODEL_NAME + " + ByteTrack", frames=frames,
+                track_postures=counts([settled(seen) for seen in tracks.values()]),
                 analyzed_frames=len(frames), sample_fps=round(fps / step, 2), analyzed_seconds=round(index / fps, 1),
-                truncated=truncated, visible_people=max(counts), max_visible=max(counts),
-                average_visible=round(sum(counts) / len(counts), 1), unique_people=len(tracks),
+                truncated=truncated, visible_people=max(people), max_visible=max(people),
+                average_visible=round(sum(people) / len(people), 1), unique_people=len(tracks),
                 inference_ms=round((time.monotonic()-started)*1000), width=width, height=height,
                 not_total_occupancy=True)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "YOLO11n", "device": "cpu", "video": True}
+    return {"status": "ok", "model": MODEL_NAME, "device": "cpu", "video": True, "posture": True}
 
 @app.get("/sample")
 def sample():
-    return FileResponse("/models/bus.jpg", media_type="image/jpeg")
+    return FileResponse(os.path.join(MODELS, "bus.jpg"), media_type="image/jpeg")
 
 @app.get("/sample-video")
 def sample_video():
-    return FileResponse("/models/sample.webm", media_type="video/webm")
+    return FileResponse(os.path.join(MODELS, "sample.webm"), media_type="video/webm")
 
 @app.post("/demo")
 def demo():
-    with open_image("/models/bus.jpg") as image:
+    with open_image(os.path.join(MODELS, "bus.jpg")) as image:
         return detect(image.convert("RGB"), "ultralytics-reference-image")
 
 @app.post("/demo-video")
 def demo_video():
-    return analyze_video("/models/sample.webm", "reference-video-from-ultralytics-image")
+    return analyze_video(os.path.join(MODELS, "sample.webm"), "reference-video-from-ultralytics-image")
 
 @app.post("/detect")
 async def upload(file: UploadFile = File(...)):

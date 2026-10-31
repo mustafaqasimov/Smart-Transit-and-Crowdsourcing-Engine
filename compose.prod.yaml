@@ -1,0 +1,28 @@
+# Production: docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+# Caddy terminates HTTPS on 80/443 (needed for the installable app and Secure cookies); the app port is not published.
+services:
+  app:
+    ports: !reset []
+    restart: unless-stopped
+    environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+  db:
+    restart: unless-stopped
+  vision:
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env, e.g. bakuyolou.example.az}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  caddy_data:

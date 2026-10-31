@@ -11,3 +11,4 @@ target/
 *-test.log
 playwright-report/
 artifacts/
+vision/models/

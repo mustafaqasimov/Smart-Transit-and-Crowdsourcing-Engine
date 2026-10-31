@@ -82,3 +82,20 @@
 /* Softer basemap so routes and buses stand out */
 .leaflet-tile-pane{filter:saturate(.55) brightness(1.04) contrast(.94)}
 @media(max-width:700px){.arrival-list{grid-template-columns:1fr;max-height:none}}
+/* YOLO26 pose: posture colours on boxes and summary chips */
+.detection-box.seated{border-color:#5ad778}.detection-box.seated b{background:#5ad778;color:#0d4a22}
+.detection-box.standing{border-color:#f9b914}.detection-box.standing b{background:#f9b914;color:#4d3800}
+.detection-box.unknown{border-color:#8fb5d7}.detection-box.unknown b{background:#8fb5d7;color:#13324e}
+.posture-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 12px}.posture-row>small{font-size:11px;font-weight:700;color:#5f6880;min-width:64px}.posture{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#3a4562;background:#f3f4f9;border-radius:7px;padding:5px 9px}.posture i{width:8px;height:8px;border-radius:2px}.posture.seated i{background:#5ad778}.posture.standing i{background:#f9b914}.posture.unknown i{background:#8fb5d7}
+
+/* Density map and reserve alerts */
+.density-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px}.density-frame{min-height:460px}
+.alert-icon{background:none;border:0}.alert-icon span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fff;box-shadow:0 3px 12px #a2321f55;font-size:16px;animation:alert-pulse 1.6s ease-in-out infinite}
+@keyframes alert-pulse{50%{box-shadow:0 0 0 8px #dd3b2a22,0 3px 12px #a2321f55}}
+.alert-list{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow:auto}.alert-head{display:flex;align-items:center;gap:8px;color:#2a3553}.alert-head .tag{margin-left:auto}.alert-count{background:#fde3df;color:#a2321f;font-weight:700}
+.alert-row{border:1px solid #f4c9c2;background:#fff7f5;border-radius:12px;padding:13px}.alert-title{display:flex;align-items:center;gap:6px}.alert-title b{font-size:12px;color:#2a3553}.alert-title small{margin-left:auto;color:#5f6880;font-size:11px}
+.alert-row p{font-size:12px;color:#4a5470;margin:8px 0}.recommendation{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#a2321f}
+.alert-actions{display:flex;gap:8px;margin-top:10px}.alert-actions .primary{padding:9px 13px;min-height:36px;font-size:12px}.alert-actions .soft{min-height:36px}
+.alert-recent{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:10px}.alert-recent small{font-size:11px;color:#5f6880}
+@media(max-width:960px){.density-grid{grid-template-columns:1fr}.alert-list{max-height:none}}
+@media(prefers-reduced-motion:reduce){.alert-icon span{animation:none}}

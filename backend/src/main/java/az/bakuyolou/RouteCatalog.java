@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import java.util.*;
 import org.springframework.stereotype.Component;

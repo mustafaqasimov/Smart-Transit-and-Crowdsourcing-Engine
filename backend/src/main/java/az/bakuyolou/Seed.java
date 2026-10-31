@@ -1,11 +1,11 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
-import static az.yolbaku.Store.map;
+import static az.bakuyolou.Store.map;
 
 @Component
 @org.springframework.core.annotation.Order(0)

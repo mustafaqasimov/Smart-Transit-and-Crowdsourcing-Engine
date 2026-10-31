@@ -1,4 +1,4 @@
-package az.yolbaku;
+package az.bakuyolou;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

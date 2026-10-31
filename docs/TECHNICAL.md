@@ -11,7 +11,7 @@ flowchart LR
   API --> Vision[VisionApi: server proxy]
   Fleet --> DB[(PostgreSQL)]
   Twin --> DB
-  Vision --> YOLO[FastAPI + YOLO11n CPU]
+  Vision --> YOLO[FastAPI + YOLO26s-pose CPU]
   Vision --> DB
 ```
 
@@ -33,7 +33,7 @@ Seed iki mərhələlidir: əvvəl ilkin məlumat, sonra idempotent park genişl�
 | GET /api/events | Bütün aktiv hadisələr |
 | POST /api/twin/preview | Validasiya edilmiş fərziyyələr ilə 3 həllin müqayisəsi |
 | POST /api/twin/{id}/apply | Versiyalı, tranzaksiyalı, idempotent tətbiq |
-| POST /api/vision/demo?bus_id=… | Həqiqi YOLO inferensi, məlum nümunə şəklində |
+| POST /api/vision/demo?bus_id=… | Həqiqi YOLO26 pose inferensi, məlum nümunə şəklində |
 | POST /api/vision/detect?bus_id=… | Multipart şəkildən insan aşkarlama |
 | POST /api/vision/video?bus_id=…, /demo-video | Videoda kadr-kadr aşkarlama + ByteTrack izləmə |
 | GET /api/vision/latest/{bus} | Son aşkarlama metadatası |
@@ -67,7 +67,7 @@ Hər preview snapshot, baseline, alternativlər və fərziyyələri bazaya yazı
 
 ## YOLO və 2D salon
 
-YOLO11n çəkiləri və nümunə şəkil konteyner build-ində endirilir və SHA-256 ilə yoxlanılır, Python paketləri dəqiq versiyalara bağlanıb; CPU inferensində yalnız `person` sinfi və 0.35 confidence həddi istifadə edilir. Nəticədə normallaşdırılmış bounding box, confidence, görünən insan sayı və müddət qaytarılır. Xidmətin bir model instansı lock ilə qorunur. Fayl həddi 8 MB, şəkil həddi 16 MP-dir. Java proxy timeout və xəta cavablarını idarə edir.
+YOLO26s-pose çəkiləri və nümunə şəkil konteyner build-ində endirilir və SHA-256 ilə yoxlanılır, Python paketləri dəqiq versiyalara bağlanıb; CPU inferensində yalnız `person` sinfi və 0.35 confidence həddi istifadə edilir. Nəticədə normallaşdırılmış bounding box, confidence, görünən insan sayı və müddət qaytarılır. Xidmətin bir model instansı lock ilə qorunur. Fayl həddi 8 MB, şəkil həddi 16 MP-dir. Java proxy timeout və xəta cavablarını idarə edir.
 
 2D salon 30 oturacaq və 50 ayaqüstə yer tutumunu göstərir. Bu sxem telemetriya saylarının vizualizasiyasıdır; piksel koordinatından yer proyeksiyası deyil. Test şəkli avtobusun xaricini göstərir. Ümumi real doluluq üçün daxili kamera, giriş/çıxış sayımı, tracking və kalibrasiya tələb edilir. Video: fayl müvəqqəti fayla yazılır, saniyədə ~3 kadr (maks. 90 kadr = 30 s) seçilir, hər video üçün ayrı model nüsxəsində ByteTrack ilə izlənir; cavabda hər kadrın vaxtı, çərçivələri və track id-ləri, maksimum/orta görünən və fərqli izlənən insan sayı var. Bazaya yalnız kadr başına say yazılır. Nümunə video build zamanı bus.jpg üzərində VP8/WebM kimi yaradılır. Canlı kamera axını inteqrasiya edilməyib.
 
@@ -90,3 +90,11 @@ OIDC/RBAC, HTTPS və Secure cookies, davamlı sessiya store-u, Flyway migrasiyal
 ## Tətbiq (PWA)
 
 `manifest.json`, ikonlar və `sw.js` service worker tətbiqi quraşdırıla bilən edir. Service worker naviqasiya üçün network-first, hash-li `/assets/*` üçün cache-first işləyir; `/api` heç vaxt keşlənmir. Quraşdırma localhost və ya HTTPS tələb edir.
+
+## YOLO26 pose və duruş təxmini
+
+Model YOLO11n-dən YOLO26s-pose-a keçirildi. `bus.jpg` üzərində ölçü (CPU): YOLO11n 4 insan, ən zəif confidence 0.62, 29 ms; YOLO26s-pose 4 insan, ən zəif 0.72, 56 ms, üstəlik 17 açar nöqtə. Video nümunəsi 18 kadrda ~1.5 s çəkir.
+
+`vision/posture.py`: çiyin, omba və diz nöqtələri (confidence ≥ 0.52) görünəndə ombadakı bucaq 60–123° oturur, 151–180° ayaqüstə sayılır, qalan hər şey “bilinmir”. Bədən və bud seqmenti insanın çərçivə hündürlüyünün ən azı 12%-i olmalıdır; bu, nəticəni video həllindən asılı etmir (ilkin skriptdə mütləq piksel həddi var idi). Önə baxan oturan insanda bud qısalır və nəticə “bilinmir” olur — bu qəsdəndir. Videoda hər izlənən insan üçün klip üzrə ən çox görünən bilinən duruş götürülür. Qaydalar build zamanı `test_posture.py` ilə yoxlanılır. Real salon kamerasında kalibrasiya və etiketli məlumatla dəqiqlik ölçülməyib.
+
+`vision/bus_yolo26.py` eyni model və qaydalarla uzun videonu lokal analiz edir: annotasiyalı MP4 və saniyəlik CSV. İlkin versiyadan fərqlər: nisbi seqment həddi, saxta track id yoxdur, çıxış FPS mənbədən böyük olmur (video sürətlənmir), NaN FPS qorunur, standart conf 0.35 və imgsz 640.
